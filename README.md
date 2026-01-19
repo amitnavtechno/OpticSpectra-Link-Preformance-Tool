@@ -12,7 +12,8 @@ A browser-based planning tool for **Free Space Optical (FSO)** links.
 
 ## Usage
 Open the live tool:
-https://<your-username>.github.io/opticSpectra-link-planner/
+(https://amitnavtechno.github.io/OpticSpectra-Link-Preformance-Tool/)
+https://opticspectra.netlify.app/
 
 ## Disclaimer
 This tool provides planning-level estimates. Final alignment must be done using live optical signal feedback.
