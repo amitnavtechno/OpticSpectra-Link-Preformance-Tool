@@ -1,2 +1,18 @@
-# OpticSpectra-Link-Preformance-Tool
-OpticSpectra Geometry &amp; Link Performance Planning Tool
+# OpticSpectra Link Planner
+
+A browser-based planning tool for **Free Space Optical (FSO)** links.
+
+## Features
+- LOS geometry & azimuth calculation
+- Vertical tilt & mechanical feasibility
+- Earth curvature consideration
+- FSO link margin & availability estimation
+- Quarter-wise visibility reference (India)
+- PDF export for customer reports
+
+## Usage
+Open the live tool:
+https://<your-username>.github.io/opticSpectra-link-planner/
+
+## Disclaimer
+This tool provides planning-level estimates. Final alignment must be done using live optical signal feedback.
