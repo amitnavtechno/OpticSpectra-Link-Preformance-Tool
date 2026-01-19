@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OpticSpectra Link Planner</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"></script>
+  
+  <style>
+    :root {
+      --primary: #10b981; /* Light green theme */
+      --primary-dark: #059669;
+      --success: #16a34a;
+      --warning: #ea580c;
+      --danger: #dc2626;
+      --light: #f8fafc;
+      --gray: #64748b;
+      --dark: #0f172a;
+      --accent-bg: #d1fae5; /* Light green accent */
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #d1fae5 0%, #f1f5f9 100%);
+      color: var(--dark);
+      min-height: 100vh;
+      padding: 20px 15px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .header {
+      background: var(--primary);
+      color: white;
+      padding: 1.5rem 2rem;
+      text-align: center;
+    }
+
+    .header h1 { font-size: 2rem; font-weight: 600; }
+
+    .section {
+      padding: 2rem;
+      border-bottom: 1px solid #e2e8f0;
+      background: linear-gradient(to bottom, #ffffff, var(--accent-bg)); /* Subtle green gradient */
+    }
+
+    .section:last-child { border-bottom: none; }
+
+    .section-title {
+      font-size: 1.6rem;
+      margin-bottom: 1.5rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0.8rem;
+      background: rgba(16,185,129,0.1); /* Light green background for titles */
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr 380px;
+      gap: 24px;
+    }
+
+    .site-panel {
+      background: var(--light);
+      border-radius: 12px;
+      padding: 1.6rem;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* Enhanced shadow */
+    }
+
+    .site-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1.4rem;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #475569;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 1rem;
+      transition: all 0.2s;
+      background: #ffffff;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(16,185,129,0.15);
+    }
+
+    #map-container {
+      height: 480px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* Enhanced */
+    }
+
+    .center-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.6rem;
+      justify-content: center;
+    }
+
+    .analyze-btn {
+      padding: 14px 40px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.25s;
+      box-shadow: 0 4px 12px rgba(16,185,129,0.25);
+      align-self: center;
+    }
+
+    .analyze-btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(16,185,129,0.35);
+    }
+
+    .result-card {
+      background: white;
+      border-radius: 10px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.07);
+      border: 1px solid #e2e8f0;
+      background: var(--accent-bg); /* Light green tint */
+    }
+
+    .stat { margin: 0.8rem 0; font-size: 1.05rem; }
+    .stat strong { color: #1e293b; }
+
+    .feasibility {
+      margin: 1.5rem 0;
+      padding: 1.1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1.15rem;
+      text-align: center;
+    }
+
+    .excellent    { background:#dcfce7; color:#166534; }
+    .good         { background:#ecfccb; color:#3f6212; }
+    .challenging  { background:#fef3c7; color:#92400e; }
+    .high-risk    { background:#fee2e2; color:#991b1b; }
+    .not-recommended { background:#fecaca; color:#7f1d1d; }
+
+    .note {
+      font-size: 0.85rem;
+      color: #64748b;
+      font-style: italic;
+      margin-top: 1rem;
+    }
+
+    .indicator {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .green { background: #22c55e; }
+    .yellow { background: #eab308; }
+    .red { background: #ef4444; }
+
+    .param-group {
+      background: var(--accent-bg); /* Light green */
+      padding: 1.2rem;
+      border-radius: 8px;
+      margin-top: 1.5rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .param-group h3 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      color: var(--primary);
+    }
+
+    .warning-box {
+      background: #fef3c7;
+      color: #92400e;
+      padding: 0.8rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .export-btn {
+      padding: 12px 32px;
+      font-size: 1rem;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 1.5rem;
+      align-self: center;
+      transition: all 0.25s;
+    }
+
+    .export-btn:hover {
+      background: #059669;
+      transform: translateY(-2px);
+    }
+
+    .fetch-btn {
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      background: #6b7280;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .fetch-btn:hover {
+      background: #4b5563;
+    }
+
+    .ref-btn {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background: #6b7280;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 1.5rem 0;
+      transition: all 0.25s;
+    }
+
+    .ref-btn:hover {
+      background: #4b5563;
+    }
+
+    .reference-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .reference-table th, .reference-table td {
+      border: 1px solid #d1d5db;
+      padding: 12px 16px;
+      text-align: left;
+    }
+
+    .reference-table th {
+      background: var(--primary);
+      color: white;
+    }
+
+    .reference-table tr:nth-child(even) {
+      background: #f3f4f6;
+    }
+
+    .reference-table td:first-child {
+      width: 40%; /* Wider for city names */
+    }
+
+    .reference-table td {
+      width: 12%; /* Equal for quarters */
+    }
+
+    @media (max-width: 1100px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+      #map-container { height: 400px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>OpticSpectra Link Planner</h1>
+  </div>
+
+  <!-- SECTION 1: Geometry & Map -->
+  <div class="section">
+    <div class="section-title">
+      <i class="fas fa-ruler-combined"></i>
+      1. Link Geometry & Alignment
+    </div>
+
+    <div class="content-grid">
+      <!-- Site A -->
+      <div class="site-panel">
+        <div class="site-header">
+          <i class="fas fa-tower-observation"></i>
+          Site A
+        </div>
+        <div class="form-group">
+          <label>Location Name</label>
+          <input id="nameA" value="Site A">
+        </div>
+        <div class="form-group">
+          <label>Latitude</label>
+          <input id="lat1" placeholder="e.g. 23.0225">
+        </div>
+        <div class="form-group">
+          <label>Longitude</label>
+          <input id="lon1" placeholder="e.g. 72.5714">
+        </div>
+        <div class="form-group">
+          <label>Height above ground (m)</label>
+          <input id="h1" type="number" step="0.1" min="0" value="30">
+          <button class="fetch-btn" onclick="fetchElevation('lat1', 'lon1', 'h1')">Fetch Elevation</button>
+        </div>
+      </div>
+
+      <!-- Map + Button -->
+      <div class="center-panel">
+        <div id="map-container"></div>
+        <button class="analyze-btn" onclick="analyzeGeometry()">
+          <i class="fas fa-calculator"></i> Calculate Geometry
+        </button>
+
+        <div id="geometryResult" class="result-card" style="display:none">
+          <div class="stat"><strong>Distance:</strong> <span id="distKm">--.-- km</span></div>
+          <div class="stat"><strong>Azimuth A→B:</strong> <span id="azAB">--.--°</span></div>
+          <div class="stat"><strong>Azimuth B→A:</strong> <span id="azBA">--.--°</span></div>
+          <div class="stat"><strong>Tilt at A:</strong> <span id="tiltA">--.--°</span></div>
+          <div class="stat"><strong>Tilt at B:</strong> <span id="tiltB">--.--°</span></div>
+
+          <div id="feasibilityBox" class="feasibility">--</div>
+        </div>
+      </div>
+
+      <!-- Site B -->
+      <div class="site-panel">
+        <div class="site-header">
+          <i class="fas fa-tower-observation"></i>
+          Site B
+        </div>
+        <div class="form-group">
+          <label>Location Name</label>
+          <input id="nameB" value="Site B">
+        </div>
+        <div class="form-group">
+          <label>Latitude</label>
+          <input id="lat2" placeholder="e.g. 23.0225">
+        </div>
+        <div class="form-group">
+          <label>Longitude</label>
+          <input id="lon2" placeholder="e.g. 72.5714">
+        </div>
+        <div class="form-group">
+          <label>Height above ground (m)</label>
+          <input id="h2" type="number" step="0.1" min="0" value="28">
+          <button class="fetch-btn" onclick="fetchElevation('lat2', 'lon2', 'h2')">Fetch Elevation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: Performance -->
+  <div class="section">
+    <div class="section-title">
+      <i class="fas fa-chart-line"></i>
+      2. Link Performance & Availability
+    </div>
+
+    <div style="max-width: 900px; margin: 0 auto;">
+      <div class="form-group">
+        <label>Link Distance (km) — auto-filled from geometry</label>
+        <input id="distance" type="number" step="0.1" value="1.0">
+      </div>
+
+      <div class="form-group">
+        <label>Visibility (km) — editable</label>
+        <input id="visibility" type="number" step="0.1" value="4.0">
+      </div>
+
+      <!-- Fixed Parameters -->
+      <div class="param-group">
+        <h3>Fixed Device Parameters</h3>
+        <div class="checkbox-group">
+          <input type="checkbox" id="enableOverride" onchange="toggleParamEdit()">
+          <label for="enableOverride">Enable Official Override</label>
+        </div>
+        <div class="warning-box" id="warningBox" style="display: none;">
+          <i class="fas fa-exclamation-triangle"></i> WARNING: Editable for OFFICIAL / EVALUATION PURPOSES ONLY.
+        </div>
+        <div class="form-group">
+          <label>Tx Optical Power (dBm)</label>
+          <input id="txPower" type="number" step="0.1" value="24" disabled>
+        </div>
+        <div class="form-group">
+          <label>Beam Divergence (mrad)</label>
+          <input id="beamDiv" type="number" step="0.01" value="0.15" disabled>
+        </div>
+        <div class="form-group">
+          <label>Receiver Aperture Diameter (m)</label>
+          <input id="apDiameter" type="number" step="0.1" value="0.9" disabled>
+        </div>
+        <div class="form-group">
+          <label>System / Optical Loss (dB)</label>
+          <input id="sysLoss" type="number" step="0.1" value="3" disabled>
+        </div>
+        <div class="form-group">
+          <label>Receiver Sensitivity (dBm)</label>
+          <input id="rxSens" type="number" step="0.1" value="-18" disabled>
+        </div>
+        <div class="form-group">
+          <label>Reference Fade Margin (dB @ 1 km)</label>
+          <input id="refFade" type="number" step="0.1" value="22" disabled>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 2rem 0;">
+        <button class="analyze-btn" onclick="calculatePerformance()">
+          <i class="fas fa-chart-bar"></i> Calculate Performance
+        </button>
+        <button class="ref-btn" onclick="showVisibilityReference()">
+          <i class="fas fa-table"></i> Show Standard Visibility Reference
+        </button>
+      </div>
+
+      <div id="performanceOutput" class="result-card" style="display:none"></div>
+
+      <button class="export-btn" onclick="exportToPDF()" style="display:none;" id="exportButton">
+        <i class="fas fa-file-pdf"></i> Export Results to PDF
+      </button>
+    </div>
+  </div>
+
+  <div style="text-align:center; padding:1.5rem; color:#64748b; font-size:0.9rem;">
+    Final alignment must be done with live optical signal feedback • Earth curvature approximated
+  </div>
+</div>
+
+<!-- Visibility Reference Modal -->
+<div id="visibilityModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:white; border-radius:12px; max-width:920px; width:90%; max-height:90vh; overflow-y:auto; padding:2rem; position:relative;">
+    <button onclick="document.getElementById('visibilityModal').style.display='none'" style="position:absolute; top:15px; right:20px; font-size:1.6rem; background:none; border:none; cursor:pointer;">×</button>
+    <h2 style="margin-top:0; color:var(--primary);">Standard Visibility Reference (km)</h2>
+    <table class="reference-table">
+      <thead>
+        <tr>
+          <th>City</th>
+          <th>Q1</th>
+          <th>Q2</th>
+          <th>Q3</th>
+          <th>Q4</th>
+          <th>Worst Case</th>
+        </tr>
+      </thead>
+      <tbody id="visibilityTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ──────────────────────────────────────────────────────────────
+// GEOMETRY PART
+// ──────────────────────────────────────────────────────────────
+
+const R = 6371000;
+
+let map, markerA, markerB, linkLine;
+
+function initMap() {
+  map = L.map('map-container').setView([20.5, 78.5], 5); // Center of India
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19
+  }).addTo(map);
+}
+
+function clearMapFeatures() {
+  if (markerA) map.removeLayer(markerA);
+  if (markerB) map.removeLayer(markerB);
+  if (linkLine) map.removeLayer(linkLine);
+}
+
+function updateMap(lat1, lon1, lat2, lon2, nameA, nameB) {
+  clearMapFeatures();
+
+  const posA = [lat1, lon1];
+  const posB = [lat2, lon2];
+
+  markerA = L.marker(posA).addTo(map)
+    .bindPopup(`<b>${nameA}</b><br>Lat: ${lat1.toFixed(5)}<br>Lon: ${lon1.toFixed(5)}`);
+
+  markerB = L.marker(posB).addTo(map)
+    .bindPopup(`<b>${nameB}</b><br>Lat: ${lat2.toFixed(5)}<br>Lon: ${lon2.toFixed(5)}`);
+
+  linkLine = L.polyline([posA, posB], {
+    color: '#10b981',
+    weight: 5,
+    opacity: 0.7,
+    dashArray: '10, 12'
+  }).addTo(map);
+
+  map.fitBounds(linkLine.getBounds(), { padding: [80, 80] });
+}
+
+function parseCoord(v) {
+  v = (v||"").trim().toUpperCase().replace(/[°′″'"]/g,'');
+  let sign = (v.includes("S") || v.includes("W")) ? -1 : 1;
+  let n = parseFloat(v.replace(/[NSEW]/g,""));
+  return isNaN(n) ? null : sign * n;
+}
+
+function toRad(d){ return d * Math.PI / 180; }
+function toDeg(r){ return r * 180 / Math.PI; }
+
+function getFeasibility(absTilt) {
+  if (absTilt <= 10) return {p:95, t:"Excellent",   c:"excellent"};
+  if (absTilt <= 20) return {p:80, t:"Good",       c:"good"};
+  if (absTilt <= 27) return {p:65, t:"Challenging", c:"challenging"};
+  if (absTilt <= 35) return {p:40, t:"High Risk",   c:"high-risk"};
+  return {p:20, t:"Not Recommended", c:"not-recommended"};
+}
+
+function analyzeGeometry() {
+  const nameA = document.getElementById("nameA").value.trim() || "Site A";
+  const nameB = document.getElementById("nameB").value.trim() || "Site B";
+
+  const lat1 = parseCoord(document.getElementById("lat1").value);
+  const lon1 = parseCoord(document.getElementById("lon1").value);
+  const lat2 = parseCoord(document.getElementById("lat2").value);
+  const lon2 = parseCoord(document.getElementById("lon2").value);
+  const hA   = parseFloat(document.getElementById("h1").value);
+  const hB   = parseFloat(document.getElementById("h2").value);
+
+  if ([lat1,lon1,lat2,lon2,hA,hB].some(v => v===null || isNaN(v))) {
+    alert("Please fill all fields with valid values");
+    return;
+  }
+
+  updateMap(lat1, lon1, lat2, lon2, nameA, nameB);
+
+  const φ1 = toRad(lat1), λ1 = toRad(lon1);
+  const φ2 = toRad(lat2), λ2 = toRad(lon2);
+
+  const dLat = φ2 - φ1;
+  const dLon = λ2 - λ1;
+
+  const a = Math.sin(dLat/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(dLon/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const dist = R * c;
+  const distKm = dist / 1000;
+
+  const y = Math.sin(dLon) * Math.cos(φ2);
+  const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(dLon);
+  const azA = (toDeg(Math.atan2(y,x)) + 360) % 360;
+  const azB = (azA + 180) % 360;
+
+  const curvature = (dist * dist) / (2 * R);
+  const effH = (hB - hA) - curvature;
+  const tilt = toDeg(Math.atan2(effH, dist));
+  const absTilt = Math.abs(tilt);
+
+  const f = getFeasibility(absTilt);
+
+  document.getElementById("distKm").textContent = distKm.toFixed(3) + " km";
+  document.getElementById("azAB").textContent   = azA.toFixed(2) + "°";
+  document.getElementById("azBA").textContent   = azB.toFixed(2) + "°";
+  document.getElementById("tiltA").textContent  = tilt.toFixed(3) + "°";
+  document.getElementById("tiltB").textContent  = (-tilt).toFixed(3) + "°";
+
+  const fb = document.getElementById("feasibilityBox");
+  fb.textContent = `${f.p}% – ${f.t}`;
+  fb.className = "feasibility " + f.c;
+
+  document.getElementById("geometryResult").style.display = "block";
+
+  // Auto-fill distance in performance section
+  document.getElementById("distance").value = distKm.toFixed(2);
+}
+
+// ──────────────────────────────────────────────────────────────
+// ELEVATION FETCH
+// ──────────────────────────────────────────────────────────────
+
+async function fetchElevation(latId, lonId, heightId) {
+  const lat = document.getElementById(latId).value;
+  const lon = document.getElementById(lonId).value;
+
+  if (!lat || !lon) {
+    alert("Please enter latitude and longitude first");
+    return;
+  }
+
+  try {
+    const response = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`);
+    const data = await response.json();
+    
+    if (data.elevation && data.elevation[0]) {
+      const elevation = data.elevation[0];
+      document.getElementById(heightId).value = elevation;
+      alert(`Elevation fetched: ${elevation} m`);
+    } else {
+      alert("Could not fetch elevation - try again later");
+    }
+  } catch (error) {
+    alert("Error fetching elevation: " + error.message);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// PERFORMANCE PART
+// ──────────────────────────────────────────────────────────────
+
+let performanceResults = {};
+
+function toggleParamEdit() {
+  const enable = document.getElementById("enableOverride").checked;
+  document.getElementById("warningBox").style.display = enable ? "block" : "none";
+  const params = ['txPower', 'beamDiv', 'apDiameter', 'sysLoss', 'rxSens', 'refFade'];
+  params.forEach(id => {
+    document.getElementById(id).disabled = !enable;
+  });
+}
+
+function calculatePerformance() {
+  const d = parseFloat(document.getElementById("distance").value);
+  const vis = parseFloat(document.getElementById("visibility").value);
+  const tx = parseFloat(document.getElementById("txPower").value);
+  const div = parseFloat(document.getElementById("beamDiv").value);
+  const ap = parseFloat(document.getElementById("apDiameter").value);
+  const sys = parseFloat(document.getElementById("sysLoss").value);
+  const sens = parseFloat(document.getElementById("rxSens").value);
+  const refFade = parseFloat(document.getElementById("refFade").value);
+
+  if (isNaN(d) || isNaN(vis) || vis <= 0 || d <= 0) {
+    document.getElementById("performanceOutput").innerHTML = 
+      '<div style="color:var(--danger); padding:1rem; font-weight:500;">Please enter valid distance and visibility values</div>';
+    document.getElementById("performanceOutput").style.display = "block";
+    return;
+  }
+
+  const beamDiameter = d * div;
+  const geoLoss = 20 * Math.log10(beamDiameter / ap);
+  const atmLoss = (3.91 / vis) * d;
+  const totalLoss = geoLoss + atmLoss + sys;
+  const rxPower = tx - totalLoss;
+
+  const linkMargin = rxPower - sens;
+  const fadeMargin = refFade / d;
+
+  let linkColor = linkMargin >= 10 ? "green" : linkMargin >= 5 ? "yellow" : linkMargin >= 0 ? "yellow" : "red";
+  let fadeColor = fadeMargin >= 15 ? "green" : fadeMargin >= 8 ? "yellow" : "red";
+
+  let status = linkMargin >= 10 ? "Excellent" :
+               linkMargin >= 5  ? "Good" :
+               linkMargin >= 0  ? "Marginal" : "Link Down";
+
+  let availability = linkMargin >= 10 ? "99.99%" :
+                     linkMargin >= 5  ? "99.9%" :
+                     linkMargin >= 0  ? "99%" : "< 99%";
+
+  let reason = linkMargin >= 5 ? "Adequate margin under current visibility." : "Margin reduced due to low visibility or longer distance.";
+
+  performanceResults = {
+    linkMargin: linkMargin.toFixed(2),
+    fadeMargin: fadeMargin.toFixed(2),
+    status,
+    availability,
+    rxPower: rxPower.toFixed(2),
+    totalLoss: totalLoss.toFixed(2),
+    atmLoss: atmLoss.toFixed(2),
+    geoLoss: geoLoss.toFixed(2),
+    txPower: tx.toFixed(1),
+    beamDiv: div.toFixed(2),
+    apDiameter: ap.toFixed(1),
+    sysLoss: sys.toFixed(1),
+    rxSens: sens.toFixed(1),
+    refFade: refFade.toFixed(1),
+    reason
+  };
+
+  document.getElementById("performanceOutput").innerHTML = `
+    <div class="highlight">
+      <span class="indicator ${linkColor}"></span>
+      Link Margin: ${linkMargin.toFixed(2)} dB
+      <span class="tooltip" title="${reason}"> ⓘ</span>
+    </div>
+
+    <div class="highlight">
+      <span class="indicator ${fadeColor}"></span>
+      Fade Margin: ${fadeMargin.toFixed(2)} dB
+      <span class="tooltip" title="Fade margin scaled from reference 22 dB @ 1 km. Represents tolerance to atmospheric fading."> ⓘ</span>
+    </div>
+
+    <div class="highlight">Link Status: ${status}</div>
+    <div class="highlight">Estimated Availability: ${availability}</div>
+
+    <div class="small">
+      Received Power: ${rxPower.toFixed(2)} dBm<br>
+      Total Link Loss: ${totalLoss.toFixed(2)} dB<br>
+      Atmospheric Loss: ${atmLoss.toFixed(2)} dB<br>
+      Geometric Loss: ${geoLoss.toFixed(2)} dB
+    </div>
+  `;
+
+  document.getElementById("performanceOutput").style.display = "block";
+  document.getElementById("exportButton").style.display = "inline-block";
+}
+
+// ──────────────────────────────────────────────────────────────
+// EXPORT TO PDF
+// ──────────────────────────────────────────────────────────────
+
+function exportToPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("OpticSpectra Link Planner Report", 105, 20, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 28, { align: "center" });
+
+  // Geometry Results Table
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Geometry Results", 20, 40);
+
+  const geometryData = [
+    ["Parameter", "Value"],
+    ["Distance", document.getElementById("distKm").textContent || "N/A"],
+    ["Azimuth A→B", document.getElementById("azAB").textContent || "N/A"],
+    ["Azimuth B→A", document.getElementById("azBA").textContent || "N/A"],
+    ["Tilt at A", document.getElementById("tiltA").textContent || "N/A"],
+    ["Tilt at B", document.getElementById("tiltB").textContent || "N/A"],
+    ["Feasibility", document.getElementById("feasibilityBox").textContent || "N/A"]
+  ];
+
+  doc.autoTable({
+    startY: 45,
+    head: [geometryData[0]],
+    body: geometryData.slice(1),
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 4, overflow: 'linebreak', minCellHeight: 8 },
+    headStyles: { fillColor: [16,185,129], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [240, 240, 240] },
+    columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 'auto' } },
+    margin: { left: 20, right: 20 }
+  });
+
+  // Performance Results Table
+  let finalY = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(14);
+  doc.text("Performance Results", 20, finalY);
+
+  const perfData = [
+    ["Parameter", "Value"],
+    ["Link Margin", performanceResults.linkMargin ? performanceResults.linkMargin + " dB" : "N/A"],
+    ["Fade Margin", performanceResults.fadeMargin ? performanceResults.fadeMargin + " dB" : "N/A"],
+    ["Link Status", performanceResults.status || "N/A"],
+    ["Estimated Availability", performanceResults.availability || "N/A"],
+    ["Received Power", performanceResults.rxPower ? performanceResults.rxPower + " dBm" : "N/A"],
+    ["Total Link Loss", performanceResults.totalLoss ? performanceResults.totalLoss + " dB" : "N/A"],
+    ["Atmospheric Loss", performanceResults.atmLoss ? performanceResults.atmLoss + " dB" : "N/A"],
+    ["Geometric Loss", performanceResults.geoLoss ? performanceResults.geoLoss + " dB" : "N/A"]
+  ];
+
+  doc.autoTable({
+    startY: finalY + 5,
+    head: [perfData[0]],
+    body: perfData.slice(1),
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 4, overflow: 'linebreak', minCellHeight: 8 },
+    headStyles: { fillColor: [16,185,129], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [240, 240, 240] },
+    columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 'auto' } },
+    margin: { left: 20, right: 20 }
+  });
+
+  // Device Parameters Table
+  finalY = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(14);
+  doc.text("Device Parameters Used", 20, finalY);
+
+  const paramData = [
+    ["Parameter", "Value"],
+    ["Tx Optical Power", performanceResults.txPower ? performanceResults.txPower + " dBm" : "24 dBm"],
+    ["Beam Divergence", performanceResults.beamDiv ? performanceResults.beamDiv + " mrad" : "0.15 mrad"],
+    ["Receiver Aperture Diameter", performanceResults.apDiameter ? performanceResults.apDiameter + " m" : "0.9 m"],
+    ["System / Optical Loss", performanceResults.sysLoss ? performanceResults.sysLoss + " dB" : "3 dB"],
+    ["Receiver Sensitivity", performanceResults.rxSens ? performanceResults.rxSens + " dBm" : "-18 dBm"],
+    ["Reference Fade Margin (@1km)", performanceResults.refFade ? performanceResults.refFade + " dB" : "22 dB"]
+  ];
+
+  doc.autoTable({
+    startY: finalY + 5,
+    head: [paramData[0]],
+    body: paramData.slice(1),
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 4, overflow: 'linebreak', minCellHeight: 8 },
+    headStyles: { fillColor: [16,185,129], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [240, 240, 240] },
+    columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 'auto' } },
+    margin: { left: 20, right: 20 }
+  });
+
+  // Footer
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text("Note: Estimates based on provided data. Actual performance may vary.", 20, doc.internal.pageSize.height - 10);
+
+  doc.save("opticspectra_link_report.pdf");
+}
+
+// ──────────────────────────────────────────────────────────────
+// CITY VISIBILITY REFERENCE
+// ──────────────────────────────────────────────────────────────
+
+const cityData = {
+  "Agartala, Tripura": {Q1:1.2,Q2:3,Q3:4,Q4:1.8,WC:1.2},
+  "Ahmedabad, Gujarat": {Q1:1.2,Q2:4,Q3:5,Q4:2.5,WC:1.2},
+  "Aizawl, Mizoram": {Q1:2,Q2:3,Q3:4,Q4:2,WC:2},
+  "Amritsar, Punjab": {Q1:0.3,Q2:3,Q3:5,Q4:1.5,WC:0.3},
+  "Bengaluru, Karnataka": {Q1:2,Q2:4,Q3:4,Q4:2.5,WC:2},
+  "Bhopal, Madhya Pradesh": {Q1:1.5,Q2:4,Q3:5,Q4:2.5,WC:1.5},
+  "Bhubaneswar, Odisha": {Q1:2,Q2:4,Q3:4,Q4:2.5,WC:2},
+  "Chennai, Tamil Nadu": {Q1:3,Q2:4,Q3:4,Q4:2.5,WC:2.5},
+  "Dehradun, Uttarakhand": {Q1:1,Q2:4,Q3:5,Q4:2,WC:1},
+  "Gangtok, Sikkim": {Q1:2,Q2:3,Q3:3,Q4:2,WC:2},
+  "Guwahati, Assam": {Q1:1,Q2:3,Q3:4,Q4:1.5,WC:1},
+  "Gurugram, Haryana": {Q1:0.3,Q2:3,Q3:5,Q4:1.5,WC:0.3},
+  "Hyderabad, Telangana": {Q1:2.5,Q2:4,Q3:4,Q4:2.5,WC:2.5},
+  "Imphal, Manipur": {Q1:1.2,Q2:3,Q3:4,Q4:1.8,WC:1.2},
+  "Itanagar, Arunachal Pradesh": {Q1:1.5,Q2:3,Q3:4,Q4:2,WC:1.5},
+  "Jaipur, Rajasthan": {Q1:0.8,Q2:4,Q3:6,Q4:2,WC:0.8},
+  "Jammu, Jammu & Kashmir": {Q1:0.8,Q2:4,Q3:6,Q4:2,WC:0.8},
+  "Kochi, Kerala": {Q1:3,Q2:4,Q3:4,Q4:3,WC:3},
+  "Kohima, Nagaland": {Q1:1.8,Q2:3,Q3:4,Q4:2,WC:1.8},
+  "Kolkata, West Bengal": {Q1:1,Q2:3,Q3:5,Q4:1.5,WC:1},
+  "Lucknow, Uttar Pradesh": {Q1:0.4,Q2:3,Q3:5,Q4:1.5,WC:0.4},
+  "Nagpur, Maharashtra": {Q1:1.8,Q2:4,Q3:5,Q4:2.5,WC:1.8},
+  "New Delhi, Delhi": {Q1:0.2,Q2:3,Q3:5,Q4:1.2,WC:0.2},
+  "Panaji, Goa": {Q1:3,Q2:5,Q3:4,Q4:4,WC:3},
+  "Patna, Bihar": {Q1:0.5,Q2:3,Q3:5,Q4:1.5,WC:0.5},
+  "Raipur, Chhattisgarh": {Q1:2,Q2:4,Q3:5,Q4:2.5,WC:2},
+  "Ranchi, Jharkhand": {Q1:1.5,Q2:4,Q3:5,Q4:2,WC:1.5},
+  "Shillong, Meghalaya": {Q1:1.5,Q2:3,Q3:3,Q4:2,WC:1.5},
+  "Shimla, Himachal Pradesh": {Q1:2,Q2:4,Q3:4,Q4:3,WC:2},
+  "Visakhapatnam, Andhra Pradesh": {Q1:3,Q2:4,Q3:4,Q4:3,WC:3}
+};
+
+function showVisibilityReference() {
+  const tbody = document.getElementById("visibilityTableBody");
+  tbody.innerHTML = "";
+
+  Object.entries(cityData).sort((a,b) => a[0].localeCompare(b[0])).forEach(([city, vals]) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${city}</td>
+      <td>${vals.Q1}</td>
+      <td>${vals.Q2}</td>
+      <td>${vals.Q3}</td>
+      <td>${vals.Q4}</td>
+      <td>${vals.WC}</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  document.getElementById("visibilityModal").style.display = "flex";
+}
+
+// Initialize
+window.onload = function() {
+  initMap();
+};
+</script>
+</body>
+</html>
