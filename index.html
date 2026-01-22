@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>OpticSpectra Link Planner</title>
-  
+
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"></script>
-  
+
   <style>
     :root {
       --primary: #10b981; /* Light green theme */
@@ -481,7 +481,7 @@
   </div>
 
   <div style="text-align:center; padding:1.5rem; color:#64748b; font-size:0.9rem;">
-    Final alignment must be done with live optical signal feedback • Earth curvature approximated
+    Developed by Amit Sharma
   </div>
 </div>
 
@@ -644,7 +644,7 @@ async function fetchElevation(latId, lonId, heightId) {
   try {
     const response = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`);
     const data = await response.json();
-    
+
     if (data.elevation && data.elevation[0]) {
       const elevation = data.elevation[0];
       document.getElementById(heightId).value = elevation;
@@ -683,7 +683,7 @@ function calculatePerformance() {
   const refFade = parseFloat(document.getElementById("refFade").value);
 
   if (isNaN(d) || isNaN(vis) || vis <= 0 || d <= 0) {
-    document.getElementById("performanceOutput").innerHTML = 
+    document.getElementById("performanceOutput").innerHTML =
       '<div style="color:var(--danger); padding:1rem; font-weight:500;">Please enter valid distance and visibility values</div>';
     document.getElementById("performanceOutput").style.display = "block";
     return;
@@ -774,19 +774,27 @@ function exportToPDF() {
   doc.setFontSize(12);
   doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 28, { align: "center" });
 
-  // Geometry Results Table
-  doc.setFont("helvetica", "bold");
+   // Geometry Section - Table
   doc.setFontSize(14);
-  doc.text("Geometry Results", 20, 40);
+  doc.setFont("helvetica", "bold");
+  doc.text("Geometry & Alignment Results", 20, 40);
 
   const geometryData = [
     ["Parameter", "Value"],
-    ["Distance", document.getElementById("distKm").textContent || "N/A"],
-    ["Azimuth A→B", document.getElementById("azAB").textContent || "N/A"],
-    ["Azimuth B→A", document.getElementById("azBA").textContent || "N/A"],
-    ["Tilt at A", document.getElementById("tiltA").textContent || "N/A"],
-    ["Tilt at B", document.getElementById("tiltB").textContent || "N/A"],
-    ["Feasibility", document.getElementById("feasibilityBox").textContent || "N/A"]
+    ["Site A Name", document.getElementById("nameA").value],
+    ["Site A Latitude", document.getElementById("lat1").value],
+    ["Site A Longitude", document.getElementById("lon1").value],
+    ["Site A Height", document.getElementById("h1").value + " m"],
+    ["Site B Name", document.getElementById("nameB").value],
+    ["Site B Latitude", document.getElementById("lat2").value],
+    ["Site B Longitude", document.getElementById("lon2").value],
+    ["Site B Height", document.getElementById("h2").value + " m"],
+    ["Distance", document.getElementById("distKm").textContent],
+    ["Azimuth A to B", document.getElementById("azAB").textContent],
+    ["Azimuth B to A", document.getElementById("azBA").textContent],
+    ["Tilt at A", document.getElementById("tiltA").textContent],
+    ["Tilt at B", document.getElementById("tiltB").textContent],
+    ["Mechanical Feasibility", document.getElementById("feasibilityBox").textContent]
   ];
 
   doc.autoTable({
@@ -794,12 +802,11 @@ function exportToPDF() {
     head: [geometryData[0]],
     body: geometryData.slice(1),
     theme: 'grid',
-    styles: { fontSize: 10, cellPadding: 4, overflow: 'linebreak', minCellHeight: 8 },
-    headStyles: { fillColor: [16,185,129], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [240, 240, 240] },
-    columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 'auto' } },
-    margin: { left: 20, right: 20 }
+    styles: { fontSize: 10, cellPadding: 3 },
+    headStyles: { fillColor: [16,185,129] }, /* Light green header */
+    alternateRowStyles: { fillColor: [240, 240, 240] }
   });
+
 
   // Performance Results Table
   let finalY = doc.lastAutoTable.finalY + 10;
@@ -853,14 +860,14 @@ function exportToPDF() {
     styles: { fontSize: 10, cellPadding: 4, overflow: 'linebreak', minCellHeight: 8 },
     headStyles: { fillColor: [16,185,129], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [240, 240, 240] },
-    columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 'auto' } },
+    columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 'auto' } },
     margin: { left: 20, right: 20 }
   });
 
   // Footer
   doc.setFontSize(9);
   doc.setTextColor(100);
-  doc.text("Note: Estimates based on provided data. Actual performance may vary.", 20, doc.internal.pageSize.height - 10);
+  doc.text("Developed by Amit Shamra-Nav Wireless Technologies Pvt. Ltd.", 20, doc.internal.pageSize.height - 10);
 
   doc.save("opticspectra_link_report.pdf");
 }
